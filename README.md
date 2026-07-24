@@ -1,125 +1,37 @@
-# 머물로 서울 - Block-level Potential Consumption Analysis
+# 머물로 서울: 블록 단위 잠재소비 분석
 
-> **Dasymetric Mapping으로 역세권 상권 매출을 블록 단위로 재배분하여, 현재 매출은 낮지만 교통·보행·상업 인프라를 고려할 때 소비 잠재력이 높은 공간을 발굴한 공간 데이터 분석 프로젝트입니다.**
+> Dasymetric Mapping으로 역세권 상권 매출을 블록 단위로 재배분하여, 현재 매출은 낮지만 교통·보행·상업 인프라를 고려할 때 소비 잠재력이 높은 공간을 찾은 공간 데이터 분석 프로젝트입니다.
 
-[![Python](https://img.shields.io/badge/Python-3.x-blue)](https://www.python.org/) ![GeoPandas](https://img.shields.io/badge/GeoPandas-Spatial%20Analysis-139C5A) ![QGIS](https://img.shields.io/badge/QGIS-Geospatial-589632)
+## 프로젝트 개요
 
-## At a Glance
-
-| Item | Description |
+| 항목 | 내용 |
 |---|---|
-| Project type | Geospatial analytics / Urban-commercial analysis |
-| Period | 2026.03.05 - 2026.05.12 |
-| Activity | University of Seoul, Advanced Data Analysis course project |
-| Study areas | Seongsu, Hwagok, and Kkachisan station areas |
-| Spatial unit | Block-level intersections within commercial districts |
-| Core method | Dasymetric Mapping |
-| Validation | Rank correlation, R², IoU, Moran's I, subsequent-period sales comparison |
-| Core stack | Python, GeoPandas, Shapely, QGIS, Plotly |
+| 수행 기간 | 2026.03.05 ~ 2026.05.12 |
+| 분석 지역 | 성수·화곡·까치산 역세권 |
+| 공간 단위 | 상권과 블록의 교차 구역 |
+| 핵심 방법 | Dasymetric Mapping |
+| 검증 | 순위상관, R², IoU, Moran's I, 후속시점 매출 비교 |
+| 도구 | Python, GeoPandas, Shapely, QGIS, Plotly |
 
-## Problem
+## 분석 아이디어
 
-Conventional station-area analysis is often conducted at the commercial-district or administrative-dong level. This treats each area as internally homogeneous, even though accessibility, commercial density, building capacity, and pedestrian activity can differ substantially from block to block.
+상권 전체 매출을 면적 비율로 균등 배분하면 상업활동이 발생하기 어려운 공간에도 같은 잠재력이 부여됩니다. 이 프로젝트는 보행·버스·지하철·도로 접근성, 상업 POI 밀도, 건물 수용력을 보조변수로 사용해 상권 매출을 블록 단위로 재배분했습니다.
 
-This project therefore asks:
+1. 모든 보조지표를 Min-Max 정규화
+2. 블록별 상업활동 점수 구성
+3. 상권 내부에서 가중치 합이 1이 되도록 정규화
+4. 원래 상권 총매출을 보존하며 블록 잠재매출 배분
+5. 잠재매출과 관측매출의 양의 격차가 큰 블록을 IQR 기준으로 선별
 
-> **Within the same station area, which blocks have stronger consumption potential than their current sales alone suggest?**
+## 검증
 
-The objective is not simply to map where sales are already high. It is to detect **undervalued blocks** whose built environment and accessibility indicate latent commercial potential.
+- Spearman·Kendall 상관: 순위 일치도
+- R²: 후속 매출과의 설명 일치도
+- IoU@상위 10%: 고잠재·고성과 블록 중첩
+- Moran's I: 공간적 군집성
+- 후속시점 매출 비교: 잠재력이 실제 이후 성과로 이어지는지 확인
 
-## Analytical Idea
-
-Commercial-district sales cannot be assigned uniformly to every point inside the district. Dasymetric Mapping redistributes an aggregate value using auxiliary variables that better represent where economic activity can occur.
-
-The block allocation score combines:
-
-- Pedestrian accessibility
-- Bus accessibility
-- Subway accessibility
-- Road accessibility
-- Commercial POI density
-- Building capacity
-
-After Min-Max scaling, the indicators are combined into block weights. Weights are normalized within each commercial district, ensuring that the redistributed block-level sales sum back to the original district total.
-
-## Data
-
-| Data source | Purpose |
-|---|---|
-| Seoul subway station coordinates and hourly ridership | Station selection and temporal demand patterns |
-| Seoul commercial-district boundaries | Aggregate sales geography |
-| Estimated commercial sales | Sales total to be redistributed |
-| Block and building geometries | Fine-grained spatial unit and capacity |
-| POI, roads, bus stops, pedestrian network | Auxiliary activity indicators |
-| Subsequent-period sales | External validity check |
-
-Some source files are large and some sales data are subject to provider or internal-use restrictions. The repository therefore includes public samples, schemas, and reproducible processing code rather than every restricted raw file.
-
-## Pipeline
-
-```text
-Policy and station-area selection
-        ↓
-Coordinate-system standardization
-        ↓
-Station / administrative-dong / commercial-area spatial joins
-        ↓
-Commercial polygon × block intersection
-        ↓
-Accessibility, POI, and building-capacity features
-        ↓
-Min-Max scaling and dasymetric score
-        ↓
-Within-district weight normalization
-        ↓
-Block-level potential-sales allocation
-        ↓
-Actual vs. potential gap and IQR screening
-        ↓
-Spatial and subsequent-period validation
-```
-
-## Key Decisions
-
-### Why block-level analysis?
-
-A station area can contain both highly accessible commercial streets and low-activity residential or inaccessible spaces. A single district-level value hides this internal heterogeneity.
-
-### Why Dasymetric Mapping?
-
-Simple area-proportional allocation assumes every square meter has equal economic potential. Auxiliary variables allow sales to be assigned more realistically to blocks where people can access, stay, and consume.
-
-### Why preserve district totals?
-
-The model reallocates an observed aggregate rather than inventing new sales. Normalizing weights within each district preserves the original total and makes the allocation auditable.
-
-### Why identify positive gaps?
-
-The core policy target is not a block that is already successful, but a block where estimated potential exceeds observed sales. IQR-based screening is used to highlight unusually large positive gaps.
-
-## Validation
-
-The submitted project evaluates whether the potential-sales surface is meaningful using multiple perspectives:
-
-- **Spearman / Kendall correlation:** rank consistency
-- **R²:** explanatory agreement with subsequent sales
-- **IoU@top 10%:** overlap among high-potential and high-outcome blocks
-- **Moran's I:** spatial clustering of residuals or potential values
-- **Subsequent-period sales comparison:** whether identified potential appears in later outcomes
-
-Using several metrics avoids treating a visually appealing map as sufficient evidence.
-
-## Project Work
-
-- Reconstructed the analytical unit by intersecting commercial areas with finer block geometries.
-- Processed coordinate reference systems, polygons, spatial joins, and intersection areas.
-- Built accessibility, POI-density, and building-capacity variables.
-- Implemented Min-Max scaling and within-district dasymetric weights.
-- Compared observed sales and potential sales and screened undervalued blocks.
-- Built static maps and time-slider visualizations for station-level interpretation.
-- Examined methodological limits and policy usability rather than presenting the map as a causal result.
-
-## Repository Structure
+## 저장소 구성
 
 ```text
 .
@@ -127,58 +39,51 @@ Using several metrics avoids treating a visually appealing map as sufficient evi
 ├── requirements.txt
 ├── data
 │   ├── README.md
-│   └── samples
-│       └── subway_hourly_ridership_sample.csv
+│   ├── public/          # 공개 가능한 소규모 원자료
+│   ├── processed/       # 분석 중 생성한 집계·공간조인 결과
+│   └── samples/         # 대용량 원자료 표본
 ├── docs
-│   ├── README.md
-│   └── pipeline_and_presentation_summary.md
-└── src
-    ├── dasymetric_mapping.py
-    └── validate_potential_sales.py
+│   └── 발표자료_요약.md
+└── notebooks
+    ├── 00_기후동행카드_효과_분석.ipynb
+    ├── 01_공간데이터_인코딩_파이프라인.ipynb
+    ├── 02_역세권_블록_검증.ipynb
+    ├── 03_블록_폴리곤_통합.ipynb
+    ├── 04_건물_용량_분석.ipynb
+    ├── 05_블록별_지표_계산.ipynb
+    ├── 06_Dasymetric_Mapping.ipynb
+    ├── 07A_교차매핑_및_잠재매출_검증.ipynb
+    ├── 07B_교차매핑_및_잠재매출_검증.ipynb
+    └── 08~11_시각화_노트북.ipynb
 ```
 
-## How to Run
+## 데이터 공개 기준
+
+ZIP의 모든 파일을 검토했습니다. 공개데이터 중 소규모 원본·집계파일과 분석 노트북은 포함했습니다. 다음 대용량 원자료는 저장소 용량과 배포 관리 문제로 직접 포함하지 않고 `data/README.md`에 원본 파일명과 배치 경로를 명시했습니다.
+
+- 시간대별 지하철 승하차 원자료
+- 행정동 추정매출 원자료
+- 역-상권 전체 매핑 테이블
+
+내부망 경로·비밀번호 예시가 포함된 병합 노트북, 빈 실험 노트북, 중복본은 공개 대상에서 제외했습니다.
+
+## 실행 방법
 
 ```bash
-git clone https://github.com/chanwoo0218/Murmul-Seoul-Spatial-Analysis.git
-cd Murmul-Seoul-Spatial-Analysis
 pip install -r requirements.txt
+python scripts/reassemble_data.py
+jupyter notebook
 ```
 
-Run block-level allocation after preparing compatible GeoJSON and sales files:
+노트북의 개인 PC 절대경로는 `../data/external`과 `../outputs` 기준 상대경로로 변경했습니다. 대용량 외부 데이터를 `data/external/`에 준비한 뒤 순서대로 실행하세요.
 
-```bash
-python src/dasymetric_mapping.py \
-  --pieces data/block_market_pieces.geojson \
-  --sales data/market_sales.csv
-```
+## 한계
 
-Run subsequent-period validation:
+- 잠재매출은 관측값이 아니라 보조지표로 재배분한 추정치입니다.
+- 가중치와 공간 단위 선택에 따라 결과가 달라질 수 있습니다.
+- 세 역세권의 결과를 서울 전체로 일반화하기 어렵습니다.
+- 관찰자료 분석이므로 정책의 인과효과를 직접 증명하지 않습니다.
 
-```bash
-python src/validate_potential_sales.py \
-  --data outputs/validation.csv \
-  --actual actual_sales_2022
-```
+## 포트폴리오
 
-See `data/README.md` and `docs/pipeline_and_presentation_summary.md` for expected columns and the mapping logic.
-
-## Limitations
-
-- Potential sales are model-based allocations, not directly observed block sales.
-- Indicator weights can influence which blocks are ranked highly.
-- Accessibility and POI variables represent opportunity, not guaranteed consumer behavior.
-- Results for three station areas should not be generalized to all of Seoul without further validation.
-- The analysis is observational and does not establish the causal effect of a transport policy.
-
-## Future Work
-
-- Learn indicator weights using later-period outcomes instead of fixed combinations
-- Sensitivity analysis across alternative weights and spatial units
-- Incorporate foot-traffic and temporal population data
-- Expand evaluation to additional station types and districts
-- Quantify uncertainty in block-level allocations
-
-## Portfolio
-
-The Korean-language background and learning reflections are available on the [Notion portfolio page](https://app.notion.com/p/65e82d8994c282dca1f2013b7f351161).
+프로젝트 배경과 학습 회고는 [노션 포트폴리오](https://app.notion.com/p/65e82d8994c282dca1f2013b7f351161)에서 확인할 수 있습니다.
